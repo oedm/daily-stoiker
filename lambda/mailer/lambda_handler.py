@@ -20,11 +20,17 @@ class NewsletterClass:
         self.month = int(self.desiredDate.strftime("%-m"))
         self.day = int(self.desiredDate.strftime("%d"))
         self.monthName = self.desiredDate.strftime("%B")
+        delta = self.desiredDate - datetime.datetime(self.desiredDate.year,1,1)
+        self.daysPassed= delta.days + 1
         self.exec_dir = os.path.dirname(os.path.abspath(__file__))
         print(f"Generate HTML message for {str(self.day)}. {str(self.monthName)}")
         self.lookupMessage()
 
     def lookupMessage(self):
+        # Load css file
+        filePath = os.path.join(self.exec_dir, "src-pub/css/stylesheet.css")
+        with open(filePath, "r") as f:
+            cssData = f.read()
         # Open book chapter of desired month
         filePath = os.path.join(self.exec_dir, "src-pub/chap{:02d}.xhtml".format(self.month))
         with open(filePath, "r") as f:
@@ -35,6 +41,8 @@ class NewsletterClass:
 
             # find all headline elements
             headlineElements = soup.find_all('p', class_='Headline')
+            topicOfMonth = soup.find('h2', class_='h2a')
+            self.topic = topicOfMonth.get_text().strip()
             results = []
             for headline in headlineElements:
                 #Extract day and title of headline
@@ -44,11 +52,21 @@ class NewsletterClass:
                 
                 #Extract body for each day
                 next_sibling = headline.find_next_sibling()
-                bodyHtml = ''
+                bodyHtml = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                <style>{cssData}</style>
+                </head>
+                <body>
+                {str(topicOfMonth)}
+                {str(headline)}"""
+
                 while next_sibling and not next_sibling.get('class') == ['Headline']:
                     bodyHtml += str(next_sibling)
                     next_sibling = next_sibling.find_next_sibling()
                 
+                bodyHtml += "</body></html>"
                 results.append(
                     {
                         'day': day,
@@ -63,24 +81,55 @@ class NewsletterClass:
         print("Message loaded")
 
 def main(event, context):
+    #Check if we're in our local development environment
+    if os.environ.get('environment') == "local":
+        print("Running locally")
+        ddb = boto3.resource("dynamodb", endpoint_url="http://localhost:18000")
+        session = boto3.Session(profile_name="moed")
+        ses = session.client('ses')
+        
+    else:
+        print("Running in AWS")
+        ddb = boto3.resource("dynamodb")
+        ses = boto3.client('ses')
+
+    # Instantiate class
     dailyNewsletter = NewsletterClass(
         month=event.get("month", None), 
         day=event.get("day", None)
     )
-    sys.exit(0)
-    ddb = boto3.resource("dynamodb")
-    table = ddb.Table("stoiker_newletter")
+    
     # Example ddb entrie structure
     # {   
     #     "email": S "john.doe@example.com",
-    #     "created_at": S "2023-07-17 12:00:00+00:00",
-    #     "subscribed": B true
     # }
 
     # Get all subscribed users from ddb
-    recipients = table.scan(
-        FilterExpression=boto3.dynamodb.conditions.Attr("subscribed").eq(True)
-    )
+    table = ddb.Table("stoiker_newsletter")
+    response = table.scan()
+    receipients = [item['email'] for item in response['Items']]
+    
+    # Send html email via SES
+    for receipient in receipients:
+        response = ses.send_email(
+            Source='"Der tägliche Stoiker" <stoiker@moed.cc>',
+            Destination={
+                'ToAddresses': [
+                    receipient,
+                ],
+            },
+            Message={
+                'Subject': {
+                    'Data': f'Tag {dailyNewsletter.daysPassed}: {dailyNewsletter.title}',
+                },
+                'Body': {
+                    'Html': {
+                        'Data': dailyNewsletter.htmlBody,
+                    },
+                },
+            },
+        )
+        print(f"Sent email to {receipient}")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -92,7 +141,6 @@ if __name__ == "__main__":
         try:
             with open(json_file, 'r') as file:
                 event = json.load(file)
-                print(type(event))
                 print("Loaded JSON file:", event)
         except FileNotFoundError:
             print(f"File not found: {json_file}")

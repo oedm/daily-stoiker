@@ -1,0 +1,19 @@
+{
+    "AttributeDefinitions": [
+        {
+            "AttributeName": "email",
+            "AttributeType": "S"
+        }
+    ],
+    "TableName": "stoiker_newsletter",
+    "KeySchema": [
+        {
+            "AttributeName": "email",
+            "KeyType": "HASH"
+        }
+    ],
+    "ProvisionedThroughput": {
+        "ReadCapacityUnits": 2,
+        "WriteCapacityUnits": 2
+    }
+}
