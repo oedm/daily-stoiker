@@ -8,7 +8,11 @@ env_EU = cdk.Environment(region="eu-west-1")
 
 app = cdk.App()
 
-DailyStoikerStack = DailyStoikerStack(app, "daily-stoiker", env=env_EU)
-cdk.Tags.of(DailyStoikerStack).add("Project", "DailyStoiker")
+DailyStoikerProduction = DailyStoikerStack(app, "daily-stoiker-prod", env=env_EU)
+cdk.Tags.of(DailyStoikerProduction).add("Project", "DailyStoiker")
+
+DailyStoikerDevelopment = DailyStoikerStack(app, "daily-stoiker-dev", env=env_EU)
+cdk.Tags.of(DailyStoikerDevelopment).add("Project", "DailyStoiker")
+
 
 app.synth()
