@@ -54,7 +54,7 @@ class DailyStoikerStack(Stack):
         
 
         # DynamoDB table for storing newsletter subscribers
-        table = aws_dynamodb.Table(self, "stoiker_newletter",
+        table = aws_dynamodb.Table(self, "stoiker_newsletter",
             partition_key=aws_dynamodb.Attribute(name="email", type=aws_dynamodb.AttributeType.STRING),
             billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
             table_name="stoiker_newletter",
