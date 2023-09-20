@@ -5,6 +5,7 @@ import datetime
 import locale
 import os
 from bs4 import BeautifulSoup
+import botocore
 
 # German time format
 locale.setlocale(locale.LC_TIME, 'de_DE')
@@ -81,17 +82,15 @@ class NewsletterClass:
         print("Message loaded")
 
 def main(event, context):
+    ddb = boto3.resource("dynamodb")
+    ses = boto3.client('ses')
+    tableName = os.environ.get('NEWSLETTER_TABLE', 'stoiker_newsletter')
     #Check if we're in our local development environment
     if os.environ.get('environment') == "local":
         print("Running locally")
         ddb = boto3.resource("dynamodb", endpoint_url="http://localhost:18000")
         session = boto3.Session(profile_name="moed")
         ses = session.client('ses')
-        
-    else:
-        print("Running in AWS")
-        ddb = boto3.resource("dynamodb")
-        ses = boto3.client('ses')
 
     # Instantiate class
     dailyNewsletter = NewsletterClass(
@@ -105,31 +104,39 @@ def main(event, context):
     # }
 
     # Get all subscribed users from ddb
-    table = ddb.Table("stoiker_newsletter")
+    table = ddb.Table(tableName)
     response = table.scan()
     receipients = [item['email'] for item in response['Items']]
+    if receipients == []:
+        print("No subscribers found")
+        sys.exit(0)
     
     # Send html email via SES
-    for receipient in receipients:
-        response = ses.send_email(
-            Source='"Der tägliche Stoiker" <stoiker@moed.cc>',
-            Destination={
-                'ToAddresses': [
-                    receipient,
-                ],
-            },
-            Message={
-                'Subject': {
-                    'Data': f'Tag {dailyNewsletter.daysPassed}: {dailyNewsletter.title}',
+    totalReceipients = len(receipients)
+    for index, receipient in enumerate(receipients):
+        try:
+            response = ses.send_email(
+                Source='"Der tägliche Stoiker" <stoiker@moed.cc>',
+                Destination={
+                    'ToAddresses': [
+                        receipient,
+                    ],
                 },
-                'Body': {
-                    'Html': {
-                        'Data': dailyNewsletter.htmlBody,
+                Message={
+                    'Subject': {
+                        'Data': f'#{dailyNewsletter.daysPassed}: {dailyNewsletter.title}',
+                    },
+                    'Body': {
+                        'Html': {
+                            'Data': dailyNewsletter.htmlBody,
+                        },
                     },
                 },
-            },
-        )
-        print(f"Sent email to {receipient}")
+            )
+        except botocore.exceptions.ClientError as e:
+            print(e.response['Error']['Message'])
+        print(f"Sent {index+1} of {totalReceipients} emails.")
+        print(f"messageId: {response['MessageId']} - {response['ResponseMetadata']['HTTPStatusCode']}")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

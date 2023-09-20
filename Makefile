@@ -39,3 +39,15 @@ d-insert-data: ## Inserts test data into table
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+d-execute: ## Run lambda function locally
+	environment=local python3 lambda/mailer/lambda_handler.py
+
+diff:	## Compare cloudfront stacks
+	cdk diff --profile moed
+
+deploy:	diff ## Rollout new cloudfront changes
+	cdk deploy --profile moed
+
+validate:
+	cdk synth

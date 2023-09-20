@@ -3,14 +3,7 @@
         {
             "PutRequest": {
                 "Item": {
-                    "email": { "S": "max.muster@moed.cc" }
-                }
-            }
-        },
-        {
-            "PutRequest": {
-                "Item": {
-                    "email": { "S": "maria.bleistift@moed.cc" }
+                    "email": { "S": "info@moed.cc" }
                 }
             }
         },
