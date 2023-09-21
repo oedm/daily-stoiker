@@ -81,7 +81,7 @@ class DailyStoikerStack(Stack):
                 hour="4",
                 month="*",
                 week_day="*",
-                year="*",
+                year="*",   # https://github.com/aws/aws-cdk/issues/21181 no TimeZone support yet.
             ),
         )
         rule.add_target(aws_events_targets.LambdaFunction(lambdaFn))
