@@ -1,0 +1,3 @@
+[submodule "lambda/mailer/src-pub"]
+	path = lambda/mailer/src-pub
+	url = git@github.com:oedm/daily-stoiker-book.git
