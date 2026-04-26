@@ -30,7 +30,7 @@ class DailyStoikerStack(Stack):
             handler="main",
             index="lambda_handler.py",
             timeout=Duration.seconds(300),
-            runtime=aws_lambda.Runtime.PYTHON_3_14,
+            runtime=aws_lambda.Runtime.PYTHON_3_11,
             architecture=aws_lambda.Architecture.ARM_64,
             environment={
                 "NEWSLETTER_TABLE": table.table_name
